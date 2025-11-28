@@ -4,6 +4,7 @@
 # include <strict/c/stdlib.h>
 # include <strict/posix/sys/socket.h>
 # include <strict/posix/fcntl.h>
+# include <em_transport/em_transport.h>
 #else
 # include <sys/socket.h>
 # include <pthread.h>
@@ -74,6 +75,12 @@ int main(int argc, char *argv[]) {
     static const char *stdout_dump_file = "/tmp/stdout.log";
 
     const int main_sock = create_local_server_nonblocking_socket(KOS_TESTING_PORT);
+
+    if (em_notify_ready() != rcOk) {
+        fprintf(stderr, "Server: EM notification failed\n");
+        close(main_sock);
+        return EXIT_FAILURE;
+    }
 
     while (1) {
         // Simple implement select() with timer

@@ -1,25 +1,11 @@
 entities:
 
-- name: php.Client
-  env:
-    VFS_FILESYSTEM_BACKEND: client:@ROOTFS_ENTITY@
-    VFS_NETWORK_BACKEND: client:kl.VfsNet
-  connections:
-  - target: kl.VfsNet
-    id: kl.VfsNet
-  - target: @ROOTFS_ENTITY@
-    id: @ROOTFS_ENTITY@
-@INIT_Client_ENTITY_CONNECTIONS+@
+- name: php_tests.Server
+@INIT_Server_ENTITY_CONNECTIONS@
+@INIT_Server_ENTITY_ENV@
 
-- name: php.Server
-  env:
-    VFS_FILESYSTEM_BACKEND: client:@ROOTFS_ENTITY@
-    VFS_NETWORK_BACKEND: client:kl.VfsNet
-  connections:
-  - target: kl.VfsNet
-    id: kl.VfsNet
-  - target: @ROOTFS_ENTITY@
-    id: @ROOTFS_ENTITY@
-@INIT_Server_ENTITY_CONNECTIONS+@
+- name: php_tests.Client
+@INIT_Client_ENTITY_CONNECTIONS@
+@INIT_Client_ENTITY_ENV@
 
 @INIT_EXTERNAL_ENTITIES@

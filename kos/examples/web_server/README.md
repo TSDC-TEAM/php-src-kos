@@ -1,6 +1,9 @@
 # Dynamic web server for KasperskyOS
 
-> Web server is based on two programs ported to KasperskyOS: [PHP Interpreter](https://github.com/TSDC-TEAM/php-src-kos) and [nginx web server](https://github.com/TSDC-TEAM/nginx-kos). KasperskyOS-based web server is dynamic, and the dynamics are provided by the PHP Interpreter.
+> The web server is based on two programs adapted for KasperskyOS:
+> [PHP Interpreter](https://github.com/TSDC-TEAM/php-src-kos) and
+> [nginx web server](https://github.com/TSDC-TEAM/nginx-kos). KasperskyOS-based web server is
+> dynamic, and the dynamics are provided by the PHP Interpreter.
 
 ## Table of contents
 - [Dynamic web server for KasperskyOS](#dynamic-web-server-for-kasperskyos)
@@ -20,14 +23,19 @@
 ### List of programs
 
 * `NetInit`—Program that initializes the network interface `en0`
-* `Nginx`—nginx web server ported to KasperskyOS
-* `Fpm`—FastCGI Process Manager (FPM) ported to KasperskyOS
-* `VfsNet`—Networking program
-* `Dhcpcd`—DHCP client
-* `VfsRamFs`—File system program
-* `BSP`—Driver for configuring pin multiplexing parameters (pinmux)
-* `GPIO`—GPIO support driver
-* `RAMDisk`—Block device driver of a virtual drive in RAM
+* `Nginx`—nginx web server adapted for KasperskyOS
+* `Fpm`—FastCGI Process Manager (FPM) adapted for KasperskyOS
+* `VfsSdCardFs`—Program that supports SDCardFS file system
+* `VfsNet`—Program that is used for working with the network
+* `Dhcpcd`—DHCP client implementation program that gets network interface parameters from an external DHCP server in the background and passes them to the virtual file system
+* `DCM`—KasperskyOS Native Dynamic Connection Manager
+* `SDCard`—Block device driver of the SDCard
+* `EntropyEntity`—Random number generator
+* `DNetSrv`—Driver for working with network cards
+* `GPIO`—GPIO driver (only for Radxa ROCK 3A)
+* `BSP`—Board support package driver
+* `PinCtrl`—PinCtrl driver (only for Radxa ROCK 3A)
+* `Bcm2711MboxArmToVc`—Mailbox driver (only for Raspberry Pi 4 B)
 
 [⬆ Back to Top](#Table-of-contents)
 
@@ -54,26 +62,31 @@ flowchart TB
 
 Statically created IPC channels:
 
-* `netinit.NetInit` → `kl.VfsRamFs`
 * `netinit.NetInit` → `kl.VfsNet`
-* `nginx.Nginx` → `kl.VfsRamFs`
+* `netinit.NetInit` → `kl.VfsSdCardFs`
 * `nginx.Nginx` → `kl.VfsNet`
-* `php.Fpm` → `kl.VfsRamFs`
+* `nginx.Nginx` → `kl.VfsSdCardFs`
 * `php.Fpm` → `kl.VfsNet`
-* `kl.VfsNet` → `kl.drivers.BSP`
-* `kl.VfsNet` → `kl.drivers.GPIO`
-* `kl.rump.Dhcpcd` → `kl.VfsRamFs`
+* `php.Fpm` → `kl.VfsSdCardFs`
 * `kl.rump.Dhcpcd` → `kl.VfsNet`
-* `kl.VfsRamFs` → `kl.drivers.RAMDisk`
+* `kl.rump.Dhcpcd` → `kl.VfsSdCardFs`
+* `kl.VfsNet` → `kl.EntropyEntity`
+* `kl.VfsNet` → `kl.drivers.DNetSrv`
+* `kl.VfsSdCardFs` → `kl.drivers.SDCard`
+* `kl.VfsSdCardFs` → `kl.EntropyEntity`
+* `kl.drivers.SDCard` → `kl.drivers.BSP`
+* `kl.drivers.SDCard` → `kl.drivers.GPIO` (only for Radxa ROCK 3A)
+* `kl.drivers.DNetSrv` → `kl.drivers.Bcm2711MboxArmToVc` (only for Raspberry Pi 4 B)
+* `kl.drivers.BSP` → `kl.drivers.Bcm2711MboxArmToVc` (only for Raspberry Pi 4 B)
+* `kl.drivers.GPIO` → `kl.drivers.PinCtrl` (only for Radxa ROCK 3A)
 
-The [`./einit/src/init.yaml.in`](einit/src/init.yaml.in) template is used to automatically generate a part of the solution initialization description file `init.yaml`. For more information about the `init.yaml.in` template file, see the [KasperskyOS Community Edition Online Help](https://click.kaspersky.com/?hl=en-us&link=online_help&pid=kos&version=1.3&customization=KCE&helpid=cmake_yaml_templates).
+The [`./einit/src/init.yaml.in`](einit/src/init.yaml.in) template is used to automatically generate a part of the solution initialization description file `init.yaml`. For more information about the `init.yaml.in` template file, see the [KasperskyOS Community Edition Online Help](https://click.kaspersky.com/?hl=en-us&link=online_help&pid=kos&version=1.4&customization=KCE&helpid=cmake_yaml_templates).
 
 [⬆ Back to Top](#Table-of-contents)
 
 ### Security policy description
 
-The [`./einit/src/security.psl.in`](einit/src/security.psl.in) template is used to automatically generate part of the solution security policy description file `security.psl`. For more information about the `security.psl.in` file, see
-[KasperskyOS Community Edition Online Help](https://click.kaspersky.com/?hl=en-us&link=online_help&pid=kos&version=1.3&customization=KCE&helpid=cmake_psl_templates).
+The [`./einit/src/security.psl`](einit/src/security.psl) file contains a solution security policy description. For more information about the `security.psl` file, see [KasperskyOS Community Edition Online Help](https://click.kaspersky.com/?hl=en-us&link=online_help&pid=kos&version=1.4&customization=KCE&helpid=ssp_descr).
 
 [⬆ Back to Top](#Table-of-contents)
 
@@ -81,15 +94,23 @@ The [`./einit/src/security.psl.in`](einit/src/security.psl.in) template is used 
 
 ### Prerequisites
 
-1. Make sure that you have installed the latest versions of the following programs:
+1. Confirm that your host system meets all the
+[System requirements](https://click.kaspersky.com/?hl=en-us&link=online_help&pid=kos&version=1.4&customization=KCE&helpid=system_requirements)
+listed in the KasperskyOS Community Edition Developer's Guide.
+1. Install the latest versions of the following programs:
 
-   * [KasperskyOS Community Edition SDK](https://os.kaspersky.com/development/)
-   * [PHP Interpreter for KasperskyOS](https://github.com/TSDC-TEAM/php-src-kos)
-   * [nginx web server for KasperskyOS](https://github.com/TSDC-TEAM/nginx-kos)
-1. Set the environment variable `SDK_PREFIX` to `/opt/KasperskyOS-Community-Edition-<version>`, where `version` is the version of the KasperskyOS Community Edition SDK that you installed. To do this, run the following command:
+    * [KasperskyOS Community Edition SDK](https://os.kaspersky.com/development/)
+    * [PHP Interpreter for KasperskyOS](https://github.com/TSDC-TEAM/php-src-kos)
+    * [nginx web server for KasperskyOS](https://github.com/TSDC-TEAM/nginx-kos)
+1. Copy the source files of this example to your local project directory.
+1. Source the SDK setup script to configure the build environment. This exports the `KOSCEDIR`
+  environment variable, which points to the SDK installation directory:
+   ```sh
+   source /opt/KasperskyOS-Community-Edition-<platform>-<version>/common/set_env.sh
    ```
-   $ export SDK_PREFIX=/opt/KasperskyOS-Community-Edition-<version>
-   ```
+1. [Build the necessary drivers](https://click.kaspersky.com/?hl=en-us&link=online_help&pid=kos&version=1.4&customization=KCE&helpid=building_radxa_drivers)
+from source only if you intend to run this example on Radxa ROCK 3A hardware. This step is not
+required for QEMU or Raspberry Pi 4 B.
 
 [⬆ Back to Top](#Table-of-contents)
 
@@ -97,15 +118,23 @@ The [`./einit/src/security.psl.in`](einit/src/security.psl.in) template is used 
 
 The KasperskyOS-based web server is built using the CMake build system, which is provided in the KasperskyOS Community Edition SDK.
 
-To build an example to run on QEMU, go to the directory with the example and run the following command:
+To build an example to run on QEMU, go to the directory with the example and run the following commands:
 ```
-$ ./cross-build.sh qemu
+$ cmake -B build -D CMAKE_TOOLCHAIN_FILE="$KOSCEDIR/toolchain/share/toolchain-aarch64-kos.cmake"
+$ cmake --build build --target {kos-qemu-image|sim}
 ```
-To build an example to run on a Raspberry Pi 4 B or Radxa ROCK 3A, use the following command:
+where:
+* `kos-qemu-image` creates a KasperskyOS-based solution image for QEMU that includes the example;
+* `sim` creates a KasperskyOS-based solution image for QEMU that includes the example and runs it.
+
+To build an example to run on a hardware, use the following commands:
 ```
-$ ./cross-build.sh hw
+$ cmake -B build -D CMAKE_TOOLCHAIN_FILE="$KOSCEDIR/toolchain/share/toolchain-aarch64-kos.cmake"
+$ cmake --build build --target {kos-image|sd-image}
 ```
-Running `cross-build.sh` creates a KasperskyOS-based solution image that includes the example. The `kos-qemu-image` or `kos-image` solution image is located in the `./build/einit` directory.
+where:
+* `kos-image` creates a KasperskyOS-based solution image that includes the example;
+* `sd-image` creates a file system image for a bootable SD card.
 
 [./netinit/CMakeLists.txt](netinit/CMakeLists.txt)—CMake commands for building the `NetInit` program.
 
@@ -119,14 +148,16 @@ Running `cross-build.sh` creates a KasperskyOS-based solution image that include
 
 1. To run the example on QEMU, go to the directory with the Web server example and run the following command:
    ```
-   $ ./cross-build.sh qemu
+   $ cmake --build build --target sim
    ```
-   For more information about running example on Raspberry Pi 4 B or Radxa ROCK 3A see the following [link](https://click.kaspersky.com/?hl=en-us&link=online_help&pid=kos&version=1.3&customization=KCE&helpid=running_sample_programs_rpi).
+   For more information about running the example on hardware see the following
+   [link](https://click.kaspersky.com/?hl=en-us&link=online_help&pid=kos&version=1.4&customization=KCE&helpid=running_sample_programs_rpi).
 1. Wait until a message like this appears in the standard output:
     ```
     [DD-MMM-YYYY HH:MM:SS.MMMMMM] NOTICE: pid 75, fpm_init(), line 83: fpm is running, pid 75
     ```
-1. Open the link <http://<ip>:8000/index.php> in your browser. The ip is localhost, if you run the example on QEMU. If you run the example on Raspberry Pi 4 B or Radxa ROCK 3A, ip is listed in the startup log.
+1. Open the link <http://<ip>:8000/index.php> in your browser. The  IP address is localhost, if you
+   run the example on QEMU. If you run the example on hardware, ip is listed in the startup log.
 1. The page with the title "KasperskyOS PHP" and six images should open.
 
 [⬆ Back to Top](#Table-of-contents)
